@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0" />
+    <style>
+      body,
+      div {
+        margin: 0;
+        padding: 0;
+      }
+      .main_box {
+        display: flex;
+      }
+      .main {
+        margin: 10px 0 0 10px;
+        position: relative;
+        height: 800px;
+      }
+      .setting {
+        flex: 1;
+        padding: 30px;
+      }
+      .ruler {
+        position: relative;
+        height: 50px;
+        border-bottom: 1px solid #000;
+      }
+      .workshops {
+        position: relative;
+        height: 800px;
+      }
+      .pointer {
+        position: absolute;
+        width: 2px;
+        height: 800px;
+        background-color: red;
+        top: 50px;
+        left: 50%; /* 初始位置在中间 */
+        transform: translateX(-50%);
+        z-index: 1;
+      }
+      .project {
+        position: relative;
+        display: flex;
+        margin: 10px;
+        width: 100%;
+        height: 50px;
+        background-color: aqua;
+      }
+      .item {
+        position: absolute;
+        top: 10px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        background-color: beige;
+        border: 1px solid #000;
+      }
+    </style>
+    <title>拖放</title>
+  </head>
+  <body>
+    <div class="main_box">
+      <div class="main">
+        <div class="ruler"></div>
+        <div class="pointer"></div>
+        <div class="workshops">
+          <div class="project">
+            <div
+              class="item"
+              draggable="true">
+              <span class="main-id">20240101001</span>| <span class="code">1002+11</span>| <span class="addr">上海</span>|
+              <span class="name">玩具</span>
+            </div>
+          </div>
+          <div class="project">
+            <div
+              class="item"
+              draggable="true">
+              <span class="main-id">20210401121</span>| <span class="code">10+1111</span>| <span class="addr">苏州</span>|
+              <span class="name">手机壳</span>
+            </div>
+            <div
+              class="item"
+              draggable="true">
+              <span class="main-id">2025041121</span>| <span class="code">10+1111</span>| <span class="addr">苏州</span>|
+              <span class="name">手机</span>
+            </div>
+          </div>
+          <div class="project">
+            <div
+              class="item"
+              draggable="true">
+              <span class="main-id">2025041121</span>| <span class="code">10+1111</span>| <span class="addr">苏州</span>|
+              <span class="name">11</span>
+            </div>
+            <div
+              class="item"
+              draggable="true">
+              <span class="main-id">2025041121</span>| <span class="code">10+1111</span>| <span class="addr">苏州</span>|
+              <span class="name">00</span>
+            </div>
+            <div
+              class="item"
+              draggable="true">
+              <span class="main-id">2020041121</span>| <span class="code">10+1111</span>| <span class="addr">南京</span>|
+              <span class="name">电源</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="setting">
+        <!-- <div class="form-main">
+          <label for="main">main: </label>
+          <input
+            type="text"
+            name="main"
+            id="main" />
+        </div> -->
+        <div class="form-item">
+          <label for="form-code">编号: </label>
+          <input
+            type="text"
+            name="form-code"
+            id="form-code" />
+        </div>
+        <div class="form-item">
+          <label for="form-addr">地址: </label>
+          <input
+            type="text"
+            name="form-addr"
+            id="form-addr" />
+        </div>
+        <div class="form-item">
+          <label for="form-name">品名: </label>
+          <input
+            type="text"
+            name="form-name"
+            id="form-name" />
+        </div>
+        <div class="form-item">
+          <input
+            type="button"
+            name="form-button"
+            id="form-button"
+            value="增加" />
+        </div>
+      </div>
+    </div>
+    <script>
+      const ruler_width = 1500
+      const tick_shifting = 18
+      const hour_width = ruler_width / 24
+      const tick_width = hour_width / 4
+      const project_padding_left = 8
+      const parser = new DOMParser()
+      let count = 0
+      window.onload = function () {
+        rulers()
+        timeMarkPointer()
+        projects()
+        items()
+        formBind()
+      }
+      function formBind() {
+        const button = document.getElementById('form-button')
+        button.addEventListener('click', function () {
+          const code = document.getElementById('form-code').value
+          const addr = document.getElementById('form-addr').value
+          const name = document.getElementById('form-name').value
+          const main_id = getMainID()
+          const projects = document.getElementsByClassName('project')
+          projects[0].appendChild(
+            newItemString2Html(
+              `
+            <div
+              class="item"
+              draggable="true">
+                <span class="main-id">${main_id}</span>|
+                <span class="code">${code}</span>|
+                <span class="addr">${addr}</span>|
+                <span class="name">${name}</span>
+            </div>
+            `
+            )
+          )
+        })
+      }
+      function getMainID() {
+        const now = new Date()
+        const year = now.getFullYear()
+        const month = now.getMonth()
+        const date = now.getDate()
+        count += 1
+        return `${year}${month}${date}${count}`
+      }
+      function newItemString2Html(str) {
+        const doc = parser.parseFromString(str, 'text/html')
+        console.log(doc.body)
+        const item = doc.body.getElementsByClassName('item')[0]
+        item.ondragstart = handleDragStart
+        item.ondrag = handleDrag
+        item.ondragend = handleDragEnd
+        item.ondragenter = handle
+        item.ondragover = handle
+        item.ondragleave = handle
+        item.ondrop = handle
+        return item
+      }
+      // 为子项添加拖拽事件
+      function items() {
+        const items = document.getElementsByClassName('item')
+        for (let index = 0; index < items.length; index++) {
+          const element = items[index]
+          element.ondragstart = handleDragStart
+          element.ondrag = handleDrag
+          element.ondragend = handleDragEnd
+          element.ondragenter = handle
+          element.ondragover = handle
+          element.ondragleave = handle
+          element.ondrop = handle
+        }
+      }
+      function handle(e) {
+        e.stopPropagation()
+      }
+      // 从子项取出对象内容
+      function targetItemInner(target) {
+        const main_id = target.getElementsByClassName('main-id')
+        const code = target.getElementsByClassName('code')
+        const addr = target.getElementsByClassName('addr')
+        const name = target.getElementsByClassName('name')
+        return {
+          mainID: main_id.length == 1 ? main_id[0] : null,
+          formCode: code.length == 1 ? code[0] : null,
+          addr: addr.length == 1 ? addr[0] : null,
+          name: name.length == 1 ? name[0] : null,
+        }
+      }
+
+      // 拖拽事件开始
+      function handleDragStart(e) {
+        // console.log(e.layerX, e.layerY, e.offsetX, e.offsetY)
+        e.dataTransfer.setData('text/html', e.target.outerHTML)
+        e.dataTransfer.setData('offsetX', e.offsetX)
+        // e.dataTransfer.setData('e.offsetY', e.offsetY)
+        e.dataTransfer.dropEffect = 'move'
+        // dragTarget = e.target
+        // dragTarget.style.visibility = 'hidden'
+        e.target.style.pointerEvents = 'none'
+      }
+      function handleDrag(e) {}
+      // 拖拽事件结束
+      function handleDragEnd(e) {
+        // if (dragTarget != null) {
+        //   // dragTarget.style.visibility = 'visible'
+        //   dragTarget.style.pointerEvents = 'auto'
+        e.target.style.pointerEvents = 'auto'
+        // }
+        // console.log('Drag End', e.dataTransfer.dropEffect)
+        if (e.dataTransfer.dropEffect == 'move') {
+          // const data = e.dataTransfer.getData('drop')
+          // if (data == 'ok') {
+          e.target.remove()
+          // }
+        }
+        // console.log('Drag End', e)
+      }
+      function projects() {
+        const projects = document.getElementsByClassName('project')
+        for (let index = 0; index < projects.length; index++) {
+          const element = projects[index]
+          element.style.paddingLeft = `${project_padding_left}px`
+          element.ondragenter = handleDragEnter
+          element.ondragover = handleDragOver
+          element.ondragleave = handleDragLeave
+          element.ondrop = handleDrop
+        }
+      }
+      // 拖拽对象进入
+      function handleDragEnter(e) {
+        e.preventDefault()
+      }
+      // 拖拽对象退出
+      function handleDragOver(e) {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+      }
+      function handleDragLeave(e) {
+        e.preventDefault()
+      }
+      // 拖拽接收对象
+      function handleDrop(e) {
+        e.preventDefault()
+        // console.log(e)
+        // e.layerX
+        // e.layerY
+        // if (dragTarget != null) {
+        //   dragTarget.remove()
+        //   dragTarget = null
+        // }
+        const data = e.dataTransfer.getData('text/html')
+        const offsetX = e.dataTransfer.getData('offsetX')
+        const element = newItemString2Html(data)
+        element.style.left = e.layerX - offsetX
+        element.style.pointerEvents = 'auto'
+        e.target.appendChild(element)
+        // isDrag = true
+      }
+      // 运行设置时间指针方法更新指针
+      function timeMarkPointer() {
+        updatePointer()
+        setInterval(updatePointer, 60000)
+      }
+      // 设置时间指针
+      function updatePointer() {
+        const pointer = document.getElementsByClassName('pointer')[0]
+        const now = new Date()
+        const hours = now.getHours()
+        const minutes = now.getMinutes()
+        const total_minutes = hours * 60 + minutes
+        const percentage = (total_minutes / 1440) * ruler_width + tick_shifting + 2
+        pointer.style.left = `${percentage}px`
+      }
+      // 绘制时间刻度
+      function rulers() {
+        const ruler = document.getElementsByClassName('ruler')[0]
+        const width = ruler_width + 10
+        ruler.style.width = `${width}px`
+        for (let index = 0; index < 24; index++) {
+          hours(ruler, index)
+        }
+      }
+      // 绘制每小时的刻度和文字
+      function hours(ruler, index) {
+        const hour = document.createElement('div')
+        const label = document.createElement('span')
+        label.innerHTML = timeFormat(index)
+        const left = index * hour_width
+        const hour_left = left + tick_shifting
+        hour.style.borderLeft = '1px solid #000'
+        hour.style.height = '30px'
+        hour.style.position = 'absolute'
+        hour.style.top = '20px'
+        hour.style.left = `${hour_left}px`
+        label.style.position = 'absolute'
+        label.style.left = `${left}px`
+        ruler.appendChild(hour)
+        ruler.appendChild(label)
+        hour.appendChild(ticks(1))
+        hour.appendChild(ticks(2))
+        hour.appendChild(ticks(3))
+      }
+      // 绘制每小时内的时刻
+      function ticks(index) {
+        const tick = document.createElement('div')
+        const left_tick = tick_width * index
+        tick.style.borderLeft = '1px solid #999'
+        tick.style.height = '20px'
+        tick.style.position = 'absolute'
+        tick.style.top = '10px'
+        tick.style.left = `${left_tick}px`
+        return tick
+      }
+      //将数字格式化为小时格式
+      function timeFormat(hour) {
+        if (isNaN(hour)) {
+          return
+        }
+        if (hour > 10) {
+          return `${hour}:00`
+        } else {
+          return `0${hour}:00`
+        }
+      }
+    </script>
+  </body>
+</html>
